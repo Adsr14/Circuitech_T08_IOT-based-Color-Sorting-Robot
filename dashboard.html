@@ -336,6 +336,14 @@
             font-family: 'Roboto Mono', monospace;
             font-size: 18px;
         }
+        
+        /* ThingSpeak Chart Iframes */
+        .chart-iframe {
+            width: 100%;
+            height: 350px;
+            border: none;
+            border-radius: 8px;
+        }
 
         /* --- Configuration Tab Styles --- */
         #configuration .form-section {
@@ -578,23 +586,22 @@
             <div class="data-container">
                 <div class="sensor-readings">
                     <div class="card">
-                        <h2><i class="fas fa-eye"></i> Color Sensor</h2>
-                        <div id="detected-color" class="live-value">Detected Color: N/A</div>
+                        <h2><i class="fas fa-eye"></i> Color Sensor (R, G, B)</h2>
+                        <div id="detected-color" class="live-value">Detected: N/A</div>
                         <div id="rgb-values" class="rgb-values">R: 0, G: 0, B: 0</div>
                         <div class="animated-visualizer" id="color-visualizer">
-                            LIVE
+                            LIVE DATA
                         </div>
                     </div>
                     <div class="card">
-                        <h2><i class="fas fa-ruler-horizontal"></i> IR Sensor</h2>
+                        <h2><i class="fas fa-ruler-horizontal"></i> Object Sensor (Field 4)</h2>
                         <div id="ir-status" class="live-value">Object Detected: NO</div>
                     </div>
                 </div>
                 <div class="visualizer-graph card">
-                    <h2><i class="fas fa-chart-area"></i> Real-time Readings</h2>
-                    <div class="live-graph-placeholder">
-                        Graph Placeholder (e.g., Chart.js or D3.js)
-                    </div>
+                    <h2><i class="fas fa-chart-area"></i> ThingSpeak Chart</h2>
+                    <iframe width="100%" class="chart-iframe" src="https://thingspeak.com/channels/3069593/charts/1?bgcolor=%230A0A0C&color=%23007ACC&dynamic=true&results=60&title=RED+Value&type=line&xaxis=Time&yaxis=Value&timescale=10" ></iframe>
+                    <p style="text-align: center; margin-top: 10px;">The chart is embedded from ThingSpeak Channel: 3069593</p>
                 </div>
             </div>
         </div>
@@ -698,6 +705,150 @@
     </div>
 
     <script>
+        // --- ThingSpeak Configuration ---
+        const CHANNEL_ID = '3069593';
+        const READ_API_KEY = '1DEIQJ6Y0JV9WEYC'; // Your Read API Key
+        const THINGSPEAK_URL = `https://api.thingspeak.com/channels/${CHANNEL_ID}/feeds.json?api_key=${READ_API_KEY}&results=1`;
+
+        // --- Global Variables ---
+        let redCount = 0;
+        let blueCount = 0;
+        let greenCount = 0;
+        
+        // Maps the numerical status from Field 5 to a color name (adjust this based on your Arduino code)
+        function mapStatusToColor(status) {
+            switch (status) {
+                case '1': return 'RED';
+                case '2': return 'GREEN';
+                case '3': return 'BLUE';
+                default: return 'UNKNOWN';
+            }
+        }
+        
+        // Maps the numerical object detection status from Field 4
+        function mapDetectionStatus(status) {
+             // Assuming 1 means detected, 0 means not detected
+            return status === '1' ? 'YES' : 'NO';
+        }
+
+        /**
+         * Fetches the latest data point from ThingSpeak.
+         */
+        async function fetchThingSpeakData() {
+            try {
+                const response = await fetch(THINGSPEAK_URL);
+                const data = await response.json();
+
+                if (data.feeds && data.feeds.length > 0) {
+                    const latestFeed = data.feeds[0];
+                    
+                    // Fields from your ThingSpeak Channel:
+                    const fieldR = latestFeed.field1 || '0';
+                    const fieldG = latestFeed.field2 || '0';
+                    const fieldB = latestFeed.field3 || '0';
+                    const fieldIR = latestFeed.field4 || '0'; // Object Detection Status
+                    const fieldColorStatus = latestFeed.field5 || '0'; // Detected Color (as a number)
+                    
+                    const detectedColorName = mapStatusToColor(fieldColorStatus);
+                    
+                    // Call the function to update the dashboard with real data
+                    updateLiveData(fieldR, fieldG, fieldB, fieldIR, detectedColorName);
+                    
+                    // Update log table if an object was detected
+                    if (mapDetectionStatus(fieldIR) === 'YES' && detectedColorName !== 'UNKNOWN') {
+                        // We will simulate sorting success/failure and bin assignment, 
+                        // as this is usually not sent via ThingSpeak read API
+                        logSortingEvent(detectedColorName);
+                    }
+                } else {
+                    console.warn("ThingSpeak channel returned no feeds.");
+                    updateLiveData('N/A', 'N/A', 'N/A', '0', 'N/A');
+                }
+            } catch (error) {
+                console.error("Error fetching ThingSpeak data:", error);
+                document.getElementById('detected-color').innerText = 'ERROR: API Fail';
+            }
+        }
+
+        /**
+         * Updates the 'Live Data' and 'Home' tabs with fetched data.
+         */
+        function updateLiveData(R, G, B, IR_status, colorName) {
+            const rgb_str = `R: ${R}, G: ${G}, B: ${B}`;
+            
+            document.getElementById('detected-color').innerText = `Detected: ${colorName}`;
+            document.getElementById('rgb-values').innerText = rgb_str;
+            document.getElementById('ir-status').innerText = `Object Detected: ${mapDetectionStatus(IR_status)}`;
+            
+            // Update visualizer color
+            const visualizer = document.getElementById('color-visualizer');
+            let bgColor = 'rgb(100, 100, 100)'; // Default to gray
+            
+            if (colorName === 'RED') bgColor = `rgb(${R}, 50, 50)`;
+            else if (colorName === 'GREEN') bgColor = `rgb(50, ${G}, 50)`;
+            else if (colorName === 'BLUE') bgColor = `rgb(50, 50, ${B})`;
+            
+            visualizer.style.backgroundColor = bgColor;
+        }
+
+        /**
+         * Simulates logging a sorting event and updates the counts.
+         */
+        function logSortingEvent(detectedColor) {
+            const sortStatus = Math.random() > 0.9 ? 'Failure' : 'Success'; // 10% failure chance
+            
+            // Get the configured bin for the detected color
+            let binElementId = '';
+            if (detectedColor === 'RED') {
+                redCount++;
+                document.getElementById('red-count').innerText = redCount;
+                binElementId = 'red-bin';
+            } else if (detectedColor === 'GREEN') {
+                greenCount++;
+                document.getElementById('green-count').innerText = greenCount;
+                binElementId = 'green-bin';
+            } else if (detectedColor === 'BLUE') {
+                blueCount++;
+                document.getElementById('blue-count').innerText = blueCount;
+                binElementId = 'blue-bin';
+            } else {
+                return; // Do not log unknown colors
+            }
+
+            const sortedBinValue = document.getElementById(binElementId).value;
+            const sortedBinName = `Bin ${sortedBinValue}`;
+            const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false });
+
+            // 1. Add to Sorting History Log
+            const logTable = document.getElementById('sorting-history-table');
+            const newRow = logTable.insertRow(0); 
+            newRow.innerHTML = `
+                <td>${timestamp}</td>
+                <td>${detectedColor}</td>
+                <td>${sortedBinName}</td>
+                <td class="${sortStatus === 'Success' ? 'log-status-success' : 'log-status-failure'}">${sortStatus}</td>
+            `;
+            if (logTable.rows.length > 20) {
+                logTable.deleteRow(20);
+            }
+
+            // 2. Add to Error Log if failed
+            if (sortStatus === 'Failure') {
+                const errorLogTable = document.getElementById('error-log-table');
+                const errorRow = errorLogTable.insertRow(0);
+                errorRow.innerHTML = `
+                    <td>${timestamp}</td>
+                    <td class="log-status-failure">Sorting mechanism jam detected for ${detectedColor}</td>
+                `;
+                if (errorLogTable.rows.length > 10) {
+                    errorLogTable.deleteRow(10);
+                }
+            }
+        }
+
+
+        // --- Other Dashboard Functions (Kept Intact) ---
+
         function showTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
@@ -707,6 +858,11 @@
             });
             document.getElementById(tabId).classList.add('active');
             document.querySelector(`.nav-bar a[href="#${tabId}"]`).classList.add('active');
+
+            // If navigating to Live Data, make sure it's updated immediately
+            if (tabId === 'live-data') {
+                fetchThingSpeakData();
+            }
         }
 
         function sendCommand(command) {
@@ -717,95 +873,32 @@
             if (command === 'start') {
                 statusIndicator.classList.remove('status-idle');
                 statusIndicator.classList.add('status-active');
-                statusText.innerText = 'Status: Active';
+                statusText.innerText = 'Status: Active (Sending Start Command)';
+                // In a real application, you would send a command via your platform (e.g., an MQTT message or a ThingSpeak 'write' update if you have an Action setup)
             } else if (command === 'stop') {
                 statusIndicator.classList.remove('status-active');
                 statusIndicator.classList.add('status-idle');
-                statusText.innerText = 'Status: Idle';
+                statusText.innerText = 'Status: Idle (Sending Stop Command)';
             }
-            // In a real application, this would send an AJAX request to the robot
         }
 
         function calibrateColor(color) {
-            // Simulate receiving RGB values from the sensor
+            // Simulate receiving RGB values from the sensor (This should be replaced by a live sensor read in a real setup)
             const randomR = Math.floor(Math.random() * 256);
             const randomG = Math.floor(Math.random() * 256);
             const randomB = Math.floor(Math.random() * 256);
             const rgbValues = `R: ${randomR}, G: ${randomG}, B: ${randomB}`;
             document.getElementById(`calibrated-${color}`).innerText = `${color.charAt(0).toUpperCase() + color.slice(1)}: ${rgbValues}`;
             console.log(`Calibrated ${color} with values: ${rgbValues}`);
-            // Send these values to the robot via an API
+            // Send these calibration values to the robot via an API/ThingSpeak (Write)
         }
         
-        // Dummy data and live updates
-        let redCount = 0;
-        let blueCount = 0;
-        let greenCount = 0;
+        // --- Initialization ---
         
-        function updateLiveData() {
-            const colors = ['RED', 'GREEN', 'BLUE', 'UNKNOWN']; // Added UNKNOWN for variety
-            const randomColor = colors[Math.floor(Math.random() * colors.length)];
-            const randomR = Math.floor(Math.random() * 256);
-            const randomG = Math.floor(Math.random() * 256);
-            const randomB = Math.floor(Math.random() * 256);
-            const isObjectDetected = Math.random() > 0.3; // More frequent detection
+        // Start fetching data immediately on load and then every 15 seconds
+        fetchThingSpeakData();
+        setInterval(fetchThingSpeakData, 15000); 
 
-            document.getElementById('detected-color').innerText = `Detected Color: ${randomColor}`;
-            document.getElementById('rgb-values').innerText = `R: ${randomR}, G: ${randomG}, B: ${randomB}`;
-            document.getElementById('ir-status').innerText = `Object Detected: ${isObjectDetected ? 'YES' : 'NO'}`;
-            
-            // Update visualizer color
-            const visualizer = document.getElementById('color-visualizer');
-            if (randomColor === 'RED') visualizer.style.backgroundColor = `rgb(200, 50, 50)`;
-            else if (randomColor === 'GREEN') visualizer.style.backgroundColor = `rgb(50, 200, 50)`;
-            else if (randomColor === 'BLUE') visualizer.style.backgroundColor = `rgb(50, 50, 200)`;
-            else visualizer.style.backgroundColor = `rgb(100, 100, 100)`; // For UNKNOWN/N/A
-
-            if (isObjectDetected) {
-                // Simulate sorting success/failure
-                const sortStatus = Math.random() > 0.9 ? 'Failure' : 'Success'; // 10% failure chance
-                const sortedBin = Math.floor(Math.random() * 3) + 1; // Bins 1, 2, 3
-                const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false });
-
-                if (randomColor === 'RED') redCount++;
-                else if (randomColor === 'GREEN') greenCount++;
-                else if (randomColor === 'BLUE') blueCount++;
-                
-                document.getElementById('red-count').innerText = redCount;
-                document.getElementById('blue-count').innerText = blueCount;
-                document.getElementById('green-count').innerText = greenCount;
-
-                const logTable = document.getElementById('sorting-history-table');
-                const newRow = logTable.insertRow(0); // Add to top
-                newRow.innerHTML = `
-                    <td>${timestamp}</td>
-                    <td>${randomColor}</td>
-                    <td>Bin ${sortedBin}</td>
-                    <td class="${sortStatus === 'Success' ? 'log-status-success' : 'log-status-failure'}">${sortStatus}</td>
-                `;
-
-                // Keep log table from growing indefinitely (e.g., max 20 entries)
-                if (logTable.rows.length > 20) {
-                    logTable.deleteRow(20);
-                }
-
-                if (sortStatus === 'Failure') {
-                    const errorLogTable = document.getElementById('error-log-table');
-                    const errorRow = errorLogTable.insertRow(0);
-                    errorRow.innerHTML = `
-                        <td>${timestamp}</td>
-                        <td class="log-status-failure">Sorting mechanism jam detected for ${randomColor}</td>
-                    `;
-                     if (errorLogTable.rows.length > 10) {
-                        errorLogTable.deleteRow(10);
-                    }
-                }
-            }
-        }
-
-        setInterval(updateLiveData, 1500); // Update faster for more dynamic feel
-
-        // Initialize first tab
         document.addEventListener('DOMContentLoaded', () => {
             showTab('home');
             document.getElementById('motor-speed').addEventListener('input', (event) => {
