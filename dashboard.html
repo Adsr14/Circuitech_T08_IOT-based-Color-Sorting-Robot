@@ -271,7 +271,6 @@
         }
 
         /* --- Live Data Tab Styles --- */
-        /* Updated live data container to be a single column for the sensor readings */
         #live-data .data-container {
             display: grid;
             grid-template-columns: 1fr;
@@ -279,7 +278,7 @@
         }
         
         #live-data .sensor-readings .card {
-            margin-bottom: 20px; /* Space between sensor cards */
+            margin-bottom: 20px;
         }
 
         .live-value {
@@ -315,6 +314,27 @@
         @keyframes pulse-border {
             from { box-shadow: 0 0 10px var(--accent-blue); border-color: var(--accent-blue); }
             to { box-shadow: 0 0 30px var(--accent-blue), 0 0 5px rgba(255,255,255,0.3); border-color: #5b9bd5; }
+        }
+
+        /* NEW STYLE: Container for the two charts */
+        .charts-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr; /* Two columns for charts */
+            gap: 25px;
+        }
+        @media (max-width: 900px) {
+             .charts-container {
+                grid-template-columns: 1fr; /* Single column on smaller screens */
+            }
+        }
+        .charts-container .card {
+            padding: 20px;
+        }
+        .chart-iframe {
+            width: 100%;
+            height: 300px;
+            border: none;
+            border-radius: 8px;
         }
 
         /* --- Configuration Tab Styles --- */
@@ -355,7 +375,7 @@
         }
 
         .config-controls input[type="range"] {
-            -webkit-appearance: none; /* Override default look */
+            -webkit-appearance: none;
             width: 100%;
             height: 8px;
             background: var(--border-color);
@@ -404,20 +424,20 @@
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
-            background-color: var(--bg-primary); /* Darker table background */
+            background-color: var(--bg-primary);
             border-radius: 8px;
-            overflow: hidden; /* Ensures rounded corners on children */
+            overflow: hidden;
         }
 
         th, td {
             text-align: left;
             padding: 15px 20px;
             border-bottom: 1px solid var(--border-color);
-            font-family: 'Roboto Mono', monospace; /* Monospace for log data */
+            font-family: 'Roboto Mono', monospace;
         }
 
         th {
-            background-color: #25282e; /* Slightly lighter header for table */
+            background-color: #25282e;
             color: var(--text-primary);
             font-weight: 500;
             text-transform: uppercase;
@@ -425,7 +445,7 @@
         }
 
         tr:nth-child(even) {
-            background-color: #1e2025; /* Alternate row color */
+            background-color: #1e2025;
         }
 
         tr:hover {
@@ -437,16 +457,15 @@
             color: var(--text-secondary);
         }
         td:first-child {
-            color: var(--accent-blue); /* Timestamp color */
+            color: var(--accent-blue);
         }
         td:nth-child(2) {
-            color: var(--text-primary); /* Detected Color */
+            color: var(--text-primary);
         }
         td:last-child {
             font-weight: 500;
         }
 
-        /* Specific status colors in log */
         .log-status-success { color: var(--accent-green); }
         .log-status-failure { color: var(--accent-red); }
 
@@ -571,9 +590,26 @@
                         <div id="ir-status" class="live-value">Object Detected: NO</div>
                     </div>
                 </div>
-                
+            </div>
+
+            <div class="charts-container">
+                <div class="card">
+                    <h2><i class="fas fa-chart-line"></i> Ultrasonic Sensor </h2>
+                   
+                        <iframe width="450" height="260" style="border: 1px solid #cccccc;" 
+                            src="https://thingspeak.com/channels/3069593/charts/1?bgcolor=%23ffffff&color=%23d62020&dynamic=true&results=60&type=line&update=15">
+                            
+                        </iframe>" >
                 </div>
-        </div>
+
+                <div class="card">
+                    <h2><i class="fas fa-chart-area"></i> pir Sensor </h2>
+                    <iframe width="450" height="260" style="border: 1px solid #cccccc;" 
+                        src="https://thingspeak.com/channels/3069593/charts/2?bgcolor=%23ffffff&color=%23d62020&dynamic=true&results=60&type=line&update=15">
+                    </iframe>
+                </div>
+            </div>
+            </div>
 
         <div id="configuration" class="tab-content">
             <div class="card form-section">
@@ -670,7 +706,7 @@
     </div>
 
     <div class="footer">
-        <p>&copy; 2023 Color Sorting Robot Project. All Rights Reserved. | <a href="https://github.com/your-repo" target="_blank">GitHub Repository</a></p>
+        <p>&copy; 2025 Color Sorting Robot Project. All Rights Reserved. | <a href="https://github.com/your-repo" target="_blank">GitHub Repository</a></p>
     </div>
 
     <script>
@@ -685,17 +721,15 @@
         let greenCount = 0;
         let lastLoggedEntryId = 0; 
         
-        // Maps the numerical status from Field 5 to a color name
         function mapStatusToColor(status) {
             switch (status) {
-                case '1': return 'RED'; // Assuming 1 = Red
-                case '2': return 'GREEN'; // Assuming 2 = Green
-                case '3': return 'BLUE'; // Assuming 3 = Blue
+                case '1': return 'RED';
+                case '2': return 'GREEN';
+                case '3': return 'BLUE';
                 default: return 'UNKNOWN';
             }
         }
         
-        // Maps the numerical object detection status from Field 4
         function mapDetectionStatus(status) {
             return status === '1' ? 'YES' : 'NO';
         }
@@ -711,22 +745,19 @@
                 if (data.feeds && data.feeds.length > 0) {
                     const latestFeed = data.feeds[0];
                     
-                    // Fields from your ThingSpeak Channel:
                     const entryId = latestFeed.entry_id;
                     const fieldR = latestFeed.field1 || '0';
                     const fieldG = latestFeed.field2 || '0';
                     const fieldB = latestFeed.field3 || '0';
-                    const fieldIR = latestFeed.field4 || '0'; // Object Detection Status
-                    const fieldColorStatus = latestFeed.field5 || '0'; // Detected Color (as a number)
+                    const fieldIR = latestFeed.field4 || '0'; 
+                    const fieldColorStatus = latestFeed.field5 || '0'; 
                     
                     const detectedColorName = mapStatusToColor(fieldColorStatus);
                     
-                    // Call the function to update the dashboard with real data
                     updateLiveData(fieldR, fieldG, fieldB, fieldIR, detectedColorName);
                     
-                    // --- Only log new entries to the Sorting History ---
                     if (entryId !== lastLoggedEntryId) {
-                        lastLoggedEntryId = entryId; // Update the last logged ID
+                        lastLoggedEntryId = entryId; 
                         
                         if (mapDetectionStatus(fieldIR) === 'YES' && detectedColorName !== 'UNKNOWN') {
                             logSortingEvent(detectedColorName);
@@ -755,9 +786,8 @@
             document.getElementById('rgb-values').innerText = rgb_str;
             document.getElementById('ir-status').innerText = `Object Detected: ${mapDetectionStatus(IR_status)}`;
             
-            // Update visualizer color
             const visualizer = document.getElementById('color-visualizer');
-            let bgColor = 'rgb(100, 100, 100)'; // Default to gray
+            let bgColor = 'rgb(100, 100, 100)';
             
             if (colorName === 'RED' || colorName === 'GREEN' || colorName === 'BLUE') {
                 const scaledR = Math.min(255, R_val * 0.5);
