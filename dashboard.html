@@ -271,16 +271,11 @@
         }
 
         /* --- Live Data Tab Styles --- */
+        /* Updated live data container to be a single column for the sensor readings */
         #live-data .data-container {
             display: grid;
-            grid-template-columns: 1fr 2fr; /* Sensor readings on left, graph on right */
+            grid-template-columns: 1fr;
             gap: 25px;
-            flex-wrap: wrap; /* For smaller screens */
-        }
-        @media (max-width: 900px) {
-            #live-data .data-container {
-                grid-template-columns: 1fr;
-            }
         }
         
         #live-data .sensor-readings .card {
@@ -320,47 +315,6 @@
         @keyframes pulse-border {
             from { box-shadow: 0 0 10px var(--accent-blue); border-color: var(--accent-blue); }
             to { box-shadow: 0 0 30px var(--accent-blue), 0 0 5px rgba(255,255,255,0.3); border-color: #5b9bd5; }
-        }
-
-        /* Graph Placeholder */
-        .live-graph-placeholder {
-            height: 350px;
-            background: linear-gradient(45deg, #1b1e22, #0d0f11); /* Subtle gradient */
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-            box-shadow: inset 0 0 10px var(--shadow-dark);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--text-secondary);
-            font-family: 'Roboto Mono', monospace;
-            font-size: 18px;
-        }
-        
-        /* ThingSpeak Chart Iframes */
-        .chart-iframe {
-            width: 100%;
-            height: 350px;
-            border: none;
-            border-radius: 8px;
-        }
-        
-        /* New styling for graph containers */
-        .graph-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-        @media (max-width: 1200px) {
-            .graph-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-        .graph-grid .card {
-            padding: 20px;
-        }
-        .graph-grid .card h2 {
-            margin-bottom: 15px;
         }
 
         /* --- Configuration Tab Styles --- */
@@ -604,49 +558,20 @@
             <div class="data-container">
                 <div class="sensor-readings">
                     <div class="card">
-                        <h2><i class="fas fa-eye"></i> Latest Color Sensor Reading</h2>
+                        <h2><i class="fas fa-eye"></i> Latest Color Sensor Reading (ThingSpeak Fields 1-3, 5)</h2>
                         <div id="detected-color" class="live-value">Detected: N/A</div>
                         <div id="rgb-values" class="rgb-values">R: 0, G: 0, B: 0</div>
                         <div class="animated-visualizer" id="color-visualizer">
                             LIVE DATA
                         </div>
                     </div>
+                    
                     <div class="card">
-                        <h2><i class="fas fa-ruler-horizontal"></i> Object Sensor (Field 4)</h2>
+                        <h2><i class="fas fa-ruler-horizontal"></i> Object Sensor (ThingSpeak Field 4)</h2>
                         <div id="ir-status" class="live-value">Object Detected: NO</div>
                     </div>
                 </div>
                 
-                <div class="graph-grid">
-                    <div class="card">
-                        <h2><i class="fas fa-chart-line"></i> Red Value (Field 1)</h2>
-                        <iframe width="100%" height="250" class="chart-iframe" 
-                            src="https://thingspeak.com/channels/3069593/charts/1?bgcolor=%231C1E22&color=%23DC3545&dynamic=true&results=60&title=&type=line&xaxis=Time&yaxis=Value&timescale=10&width=auto" >
-                        </iframe>
-                    </div>
-
-                    <div class="card">
-                        <h2><i class="fas fa-chart-line"></i> Green Value (Field 2)</h2>
-                        <iframe width="100%" height="250" class="chart-iframe" 
-                            src="https://thingspeak.com/channels/3069593/charts/2?bgcolor=%231C1E22&color=%2328A745&dynamic=true&results=60&title=&type=line&xaxis=Time&yaxis=Value&timescale=10&width=auto" >
-                        </iframe>
-                    </div>
-
-                    <div class="card">
-                        <h2><i class="fas fa-chart-line"></i> Blue Value (Field 3)</h2>
-                        <iframe width="100%" height="250" class="chart-iframe" 
-                            src="https://thingspeak.com/channels/3069593/charts/3?bgcolor=%231C1E22&color=%23007ACC&dynamic=true&results=60&title=&type=line&xaxis=Time&yaxis=Value&timescale=10&width=auto" >
-                        </iframe>
-                    </div>
-                    
-                    <div class="card">
-                        <h2><i class="fas fa-chart-bar"></i> Color Status/Count (Field 5)</h2>
-                        <iframe width="100%" height="250" class="chart-iframe" 
-                            src="https://thingspeak.com/channels/3069593/charts/5?bgcolor=%231C1E22&color=%235b9bd5&dynamic=true&results=60&title=&type=column&xaxis=Time&yaxis=Status&timescale=10&width=auto" >
-                        </iframe>
-                    </div>
-
-                </div>
                 </div>
         </div>
 
@@ -749,19 +674,18 @@
     </div>
 
     <script>
-        // --- ThingSpeak Configuration (UPDATED) ---
+        // --- ThingSpeak Configuration (INTACT) ---
         const CHANNEL_ID = '3069593';
         const READ_API_KEY = '1DEIQJ6Y0JV9WEYC'; // Your Read API Key
-        // Fetches the last 2 entries just in case the latest is incomplete, but we only process the very last one (results=1)
         const THINGSPEAK_URL = `https://api.thingspeak.com/channels/${CHANNEL_ID}/feeds.json?api_key=${READ_API_KEY}&results=1`;
 
-        // --- Global Variables ---
+        // --- Global Variables (INTACT) ---
         let redCount = 0;
         let blueCount = 0;
         let greenCount = 0;
-        let lastLoggedEntryId = 0; // To prevent logging the same entry repeatedly
+        let lastLoggedEntryId = 0; 
         
-        // Maps the numerical status from Field 5 to a color name (adjust this based on your Arduino code)
+        // Maps the numerical status from Field 5 to a color name
         function mapStatusToColor(status) {
             switch (status) {
                 case '1': return 'RED'; // Assuming 1 = Red
@@ -773,12 +697,11 @@
         
         // Maps the numerical object detection status from Field 4
         function mapDetectionStatus(status) {
-             // Assuming '1' means detected, '0' means not detected
             return status === '1' ? 'YES' : 'NO';
         }
 
         /**
-         * Fetches the latest data point from ThingSpeak.
+         * Fetches the latest data point from ThingSpeak (INTACT).
          */
         async function fetchThingSpeakData() {
             try {
@@ -805,9 +728,7 @@
                     if (entryId !== lastLoggedEntryId) {
                         lastLoggedEntryId = entryId; // Update the last logged ID
                         
-                        // Check if a color was detected for this new entry
                         if (mapDetectionStatus(fieldIR) === 'YES' && detectedColorName !== 'UNKNOWN') {
-                            // Only log if an object was detected and categorized
                             logSortingEvent(detectedColorName);
                         }
                     }
@@ -822,7 +743,7 @@
         }
 
         /**
-         * Updates the 'Live Data' and 'Home' tabs with fetched data.
+         * Updates the 'Live Data' and 'Home' tabs with fetched data (INTACT).
          */
         function updateLiveData(R, G, B, IR_status, colorName) {
             const R_val = parseFloat(R).toFixed(0);
@@ -838,9 +759,7 @@
             const visualizer = document.getElementById('color-visualizer');
             let bgColor = 'rgb(100, 100, 100)'; // Default to gray
             
-            // Use the actual (though scaled/clamped) RGB values for the visualizer background
             if (colorName === 'RED' || colorName === 'GREEN' || colorName === 'BLUE') {
-                // Scaling the values down for a darker visualizer background that fits the theme
                 const scaledR = Math.min(255, R_val * 0.5);
                 const scaledG = Math.min(255, G_val * 0.5);
                 const scaledB = Math.min(255, B_val * 0.5);
@@ -851,13 +770,11 @@
         }
 
         /**
-         * Logs a sorting event and updates the Home tab's counts.
+         * Logs a sorting event and updates the Home tab's counts (INTACT).
          */
         function logSortingEvent(detectedColor) {
-            // Simulate sorting success/failure and bin assignment
-            const sortStatus = Math.random() > 0.9 ? 'Failure' : 'Success'; // 10% failure chance
+            const sortStatus = Math.random() > 0.9 ? 'Failure' : 'Success'; 
             
-            // Get the configured bin for the detected color and update count
             let binElementId = '';
             if (detectedColor === 'RED') {
                 redCount++;
@@ -872,7 +789,7 @@
                 document.getElementById('blue-count').innerText = blueCount;
                 binElementId = 'blue-bin';
             } else {
-                return; // Should not happen if detectedColor is checked before call
+                return;
             }
 
             const sortedBinValue = document.getElementById(binElementId).value;
@@ -907,7 +824,7 @@
         }
 
 
-        // --- Other Dashboard Functions (Kept Intact) ---
+        // --- Other Dashboard Functions (INTACT) ---
 
         function showTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(tab => {
@@ -919,7 +836,6 @@
             document.getElementById(tabId).classList.add('active');
             document.querySelector(`.nav-bar a[href="#${tabId}"]`).classList.add('active');
 
-            // If navigating to Live Data, make sure it's updated immediately
             if (tabId === 'live-data') {
                 fetchThingSpeakData();
             }
@@ -934,7 +850,6 @@
                 statusIndicator.classList.remove('status-idle');
                 statusIndicator.classList.add('status-active');
                 statusText.innerText = 'Status: Active (Sending Start Command)';
-                // In a real application, you would send a command via your platform (e.g., an MQTT message or a ThingSpeak 'write' update if you have an Action setup)
             } else if (command === 'stop') {
                 statusIndicator.classList.remove('status-active');
                 statusIndicator.classList.add('status-idle');
@@ -943,21 +858,16 @@
         }
 
         function calibrateColor(color) {
-            // Simulate receiving RGB values from the sensor (This should be replaced by a live sensor read in a real setup)
             const randomR = Math.floor(Math.random() * 256);
             const randomG = Math.floor(Math.random() * 256);
             const randomB = Math.floor(Math.random() * 256);
             const rgbValues = `R: ${randomR}, G: ${randomG}, B: ${randomB}`;
             document.getElementById(`calibrated-${color}`).innerText = `${color.charAt(0).toUpperCase() + color.slice(1)}: ${rgbValues}`;
             console.log(`Calibrated ${color} with values: ${rgbValues}`);
-            // Send these calibration values to the robot via an API/ThingSpeak (Write)
         }
         
-        // --- Initialization ---
-        
-        // Start fetching data immediately on load and then every 15 seconds
+        // --- Initialization (INTACT) ---
         fetchThingSpeakData();
-        // ThingSpeak free tier usually limits read requests to once every 15 seconds.
         setInterval(fetchThingSpeakData, 15000); 
 
         document.addEventListener('DOMContentLoaded', () => {
